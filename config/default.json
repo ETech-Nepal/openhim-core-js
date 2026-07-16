@@ -85,7 +85,8 @@
       "secretOrPublicKey": "",
       "algorithms": "",
       "audience": "",
-      "issuer": ""
+      "issuer": "",
+      "dpopPublicBaseUrl": ""
     }
   },
   "email": {

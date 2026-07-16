@@ -11,6 +11,8 @@ import * as client from '../../src/model/clients'
 import * as jwtAuthentication from '../../src/middleware/jwtAuthentication'
 import * as cache from '../../src/jwtSecretOrPublicKeyCache'
 import * as jwksCache from '../../src/jwksCache'
+import * as dpop from '../../src/dpop'
+import jwt from 'jsonwebtoken'
 
 describe('JWT Authorisation Test', () => {
   describe('koa middleware', () => {
@@ -734,6 +736,97 @@ describe('JWT Authorisation Test', () => {
       configStub.callCount.should.eql(1)
       loggerStub.callCount.should.eql(1)
       should(ctx.authenticated).be.undefined()
+    })
+
+    describe('DPoP', () => {
+      const mockJwtConfig = {
+        algorithms: 'HS256',
+        audience: 'testAudience',
+        issuer: 'testIssuer',
+        dpopPublicBaseUrl: 'https://hie.example.org'
+      }
+
+      function boundToken(cnf = {jkt: 'thumb'}) {
+        return jwt.sign(
+          {sub: 'test', aud: ['testAudience'], iss: 'testIssuer', cnf},
+          'test',
+          {algorithm: 'HS256'}
+        )
+      }
+
+      function makeCtx(scheme, token) {
+        return {
+          header: {},
+          request: {
+            method: 'GET',
+            path: '/fhir/Patient',
+            header: {authorization: `${scheme} ${token}`, dpop: 'proof'}
+          }
+        }
+      }
+
+      function stubHappyPath(jwtConfig = mockJwtConfig) {
+        sandbox.stub(cache, 'getSecretOrPublicKey').returns('test')
+        sandbox.stub(configIndex.config, 'get').returns(jwtConfig)
+        sandbox.stub(logger, 'info')
+        sandbox.stub(logger, 'error')
+        sandbox
+          .stub(client.ClientModel, 'findOne')
+          .resolves({name: 'Test', clientID: 'test'})
+      }
+
+      it('should accept the DPoP authorization scheme', async () => {
+        stubHappyPath()
+        const dpopStub = sandbox.stub(dpop, 'verifyDpop').resolves()
+        const ctx = makeCtx('DPoP', boundToken())
+
+        await jwtAuthentication.koaMiddleware(ctx, sandbox.spy())
+
+        should(ctx.authenticated).be.ok()
+        dpopStub.callCount.should.eql(1)
+        dpopStub.firstCall.args[0].should.containEql({
+          proof: 'proof',
+          jkt: 'thumb',
+          method: 'GET',
+          url: 'https://hie.example.org/fhir/Patient'
+        })
+      })
+
+      it('should not authenticate when the DPoP proof is invalid', async () => {
+        stubHappyPath()
+        sandbox.stub(dpop, 'verifyDpop').rejects(new Error('DPoP htu mismatch'))
+        const ctx = makeCtx('Bearer', boundToken())
+
+        await jwtAuthentication.koaMiddleware(ctx, sandbox.spy())
+
+        should(ctx.authenticated).be.undefined()
+      })
+
+      it('should not enforce DPoP when the token has no cnf.jkt', async () => {
+        stubHappyPath()
+        const dpopStub = sandbox
+          .stub(dpop, 'verifyDpop')
+          .rejects(new Error('x'))
+        const ctx = makeCtx('Bearer', boundToken(null))
+
+        await jwtAuthentication.koaMiddleware(ctx, sandbox.spy())
+
+        should(ctx.authenticated).be.ok()
+        dpopStub.callCount.should.eql(0)
+      })
+
+      it('should not enforce DPoP when dpopPublicBaseUrl is not configured', async () => {
+        stubHappyPath({...mockJwtConfig, dpopPublicBaseUrl: ''})
+        const dpopStub = sandbox
+          .stub(dpop, 'verifyDpop')
+          .rejects(new Error('x'))
+        const ctx = makeCtx('Bearer', boundToken())
+
+        await jwtAuthentication.koaMiddleware(ctx, sandbox.spy())
+
+        should(ctx.authenticated).be.ok()
+        dpopStub.callCount.should.eql(0)
+      })
     })
   })
 })

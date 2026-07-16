@@ -13,7 +13,7 @@ export const CUSTOM_TOKEN_AUTH_TYPE = 'custom-token-auth'
 export const JWT_AUTH_TYPE = 'jwt-auth'
 
 export const JWT_PATTERN =
-  /^ *(?:[Bb][Ee][Aa][Rr][Ee][Rr]) +([A-Za-z0-9\-._~+/]+=*) *$/
+  /^ *(?:[Bb][Ee][Aa][Rr][Ee][Rr]|[Dd][Pp][Oo][Pp]) +([A-Za-z0-9\-._~+/]+=*) *$/
 
 export const CUSTOM_TOKEN_PATTERN =
   /^ *(?:[Cc][Uu][Ss][Tt][Oo][Mm]) +([A-Za-z0-9\-._~+/]+=*) *$/
@@ -36,5 +36,5 @@ export const DEFAULT_IMPORT_MAP_PATHS = {
   '@jembi/transaction-log': `${OPENHIM_CONSOLE_BASE_URL}/libs/@jembi/transaction-log/dist/jembi-transaction-log.js`,
   '@jembi/channels-app': `${OPENHIM_CONSOLE_BASE_URL}/libs/@jembi/channels-app/dist/jembi-channels-app.js`,
   '@jembi/users-app': `${OPENHIM_CONSOLE_BASE_URL}/libs/@jembi/users-app/dist/jembi-users-app.js`,
-  "@jembi/client-roles-app": `${OPENHIM_CONSOLE_BASE_URL}/libs/@jembi/client-roles-app/dist/jembi-client-roles-app.js`  
+  '@jembi/client-roles-app': `${OPENHIM_CONSOLE_BASE_URL}/libs/@jembi/client-roles-app/dist/jembi-client-roles-app.js`
 }

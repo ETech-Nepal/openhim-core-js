@@ -7,6 +7,7 @@ import * as client from '../model/clients'
 import * as configIndex from '../config'
 import * as jwtSecretOrPublicKeyCache from '../jwtSecretOrPublicKeyCache'
 import * as jwksCache from '../jwksCache'
+import * as dpop from '../dpop'
 import {JWT_PATTERN} from '../constants'
 import {promisify} from 'util'
 
@@ -21,8 +22,7 @@ async function authenticateClient(clientID) {
   })
 }
 
-function getJwtOptions() {
-  const jwtConfig = configIndex.config.get('authentication:jwt')
+function getJwtOptions(jwtConfig) {
   const jwtOptions = {}
 
   if (jwtConfig.algorithms) {
@@ -57,6 +57,7 @@ async function authenticateToken(ctx) {
   }
 
   try {
+    const jwtConfig = configIndex.config.get('authentication:jwt')
     let secretOrPublicKey = jwtSecretOrPublicKeyCache.getSecretOrPublicKey()
 
     if (
@@ -77,12 +78,24 @@ async function authenticateToken(ctx) {
     const decodedToken = await verify(
       token[1],
       secretOrPublicKey,
-      getJwtOptions()
+      getJwtOptions(jwtConfig)
     )
 
     if (!decodedToken.sub) {
       logger.error('Invalid JWT Payload')
       return
+    }
+
+    // RFC 9449: a sender-constrained token (cnf.jkt) must be accompanied by a valid DPoP proof
+    const jkt = decodedToken.cnf && decodedToken.cnf.jkt
+    if (jkt && jwtConfig.dpopPublicBaseUrl) {
+      await dpop.verifyDpop({
+        proof: ctx.request.header.dpop,
+        accessToken: token[1],
+        jkt,
+        method: ctx.request.method,
+        url: jwtConfig.dpopPublicBaseUrl + ctx.request.path
+      })
     }
 
     const client = await authenticateClient(decodedToken.sub)
