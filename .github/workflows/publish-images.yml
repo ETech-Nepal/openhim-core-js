@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # branch name as a docker tag: "feat/dpop-x-role" -> "feat-dpop-x-role"
+      - run: echo "BRANCH_TAG=${GITHUB_REF_NAME//\//-}" >> "$GITHUB_ENV"
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -21,4 +23,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/etech-nepal/openhim-core:${{ github.sha }}
+          tags: |
+            ghcr.io/etech-nepal/openhim-core:${{ github.sha }}
+            ghcr.io/etech-nepal/openhim-core:${{ env.BRANCH_TAG }}
