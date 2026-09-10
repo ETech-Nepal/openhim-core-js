@@ -53,6 +53,70 @@ describe('Authorisation middleware', () => {
       })
     })
 
+    it('should deny with 403 when a route forwards X-Role but the token has no mapped role', done => {
+      const channel = new ChannelModel({
+        name: 'Authorisation mock channel x-role',
+        urlPattern: 'test/authorisation',
+        allow: ['PoC'],
+        routes: [
+          {
+            name: 'test route',
+            host: 'localhost',
+            port: 9876,
+            primary: true,
+            forwardRoleHeader: true
+          }
+        ],
+        updatedBy: {
+          id: new ObjectId(),
+          name: 'Test'
+        }
+      })
+
+      const ctx = {}
+      ctx.authenticated = {clientID: 'x', roles: ['PoC']}
+      ctx.matchingChannel = channel
+      ctx.request = {url: 'test/authorisation', path: 'test/authorisation'}
+      ctx.response = {}
+      return authorisation.authorise(ctx, () => {
+        ;(ctx.authorisedChannel === undefined).should.be.true
+        ctx.response.status.should.be.exactly(403)
+        return done()
+      })
+    })
+
+    it('should allow a request when a route forwards X-Role and the token has a mapped role', done => {
+      const channel = new ChannelModel({
+        name: 'Authorisation mock channel x-role ok',
+        urlPattern: 'test/authorisation',
+        allow: ['PoC'],
+        routes: [
+          {
+            name: 'test route',
+            host: 'localhost',
+            port: 9876,
+            primary: true,
+            forwardRoleHeader: true
+          }
+        ],
+        updatedBy: {
+          id: new ObjectId(),
+          name: 'Test'
+        }
+      })
+
+      const ctx = {}
+      ctx.authenticated = {clientID: 'x', roles: ['PoC']}
+      ctx.jwtRole = 'ehr'
+      ctx.matchingChannel = channel
+      ctx.request = {url: 'test/authorisation', path: 'test/authorisation'}
+      ctx.response = {}
+      return authorisation.authorise(ctx, () => {
+        ctx.authorisedChannel.should.exist
+        return done()
+      })
+    })
+
     it('should deny a request if the client is NOT authorised to use the channel by role', done => {
       // Setup a channel for the mock endpoint
       const channel = new ChannelModel({

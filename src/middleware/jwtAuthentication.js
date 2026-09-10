@@ -43,6 +43,23 @@ function getJwtOptions(jwtConfig) {
   return jwtOptions
 }
 
+// "hip=ehr,hiu=patient" -> first realm role with a mapping, or undefined
+function mapRealmRole(decodedToken, roleMappings) {
+  if (!roleMappings) {
+    return
+  }
+  const mappings = Object.fromEntries(
+    roleMappings
+      .split(',')
+      .map(pair => pair.trim())
+      .filter(Boolean)
+      .map(pair => pair.split('=').map(part => part.trim()))
+  )
+  const realmRoles =
+    (decodedToken.realm_access && decodedToken.realm_access.roles) || []
+  return realmRoles.map(role => mappings[role]).find(Boolean)
+}
+
 async function authenticateToken(ctx) {
   if (ctx.authenticated) {
     return
@@ -102,6 +119,7 @@ async function authenticateToken(ctx) {
     logger.info(`Client (${client.name}) is Authenticated`)
     ctx.authenticated = client
     ctx.authenticationType = 'token'
+    ctx.jwtRole = mapRealmRole(decodedToken, jwtConfig.roleMappings)
   } catch (error) {
     logger.error(`JWT could not be verified: ${error.message}`)
     return

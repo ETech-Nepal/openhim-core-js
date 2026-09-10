@@ -86,7 +86,8 @@
       "algorithms": "",
       "audience": "",
       "issuer": "",
-      "dpopPublicBaseUrl": ""
+      "dpopPublicBaseUrl": "",
+      "roleMappings": ""
     }
   },
   "email": {

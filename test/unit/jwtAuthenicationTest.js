@@ -828,5 +828,64 @@ describe('JWT Authorisation Test', () => {
         dpopStub.callCount.should.eql(0)
       })
     })
+
+    describe('role mapping', () => {
+      function ctxWithRoles(roles) {
+        const token = jwt.sign(
+          {
+            sub: 'test',
+            aud: ['testAudience'],
+            iss: 'testIssuer',
+            realm_access: {roles}
+          },
+          'test',
+          {algorithm: 'HS256'}
+        )
+        return {
+          header: {},
+          request: {
+            method: 'GET',
+            path: '/fhir/Patient',
+            header: {authorization: `Bearer ${token}`}
+          }
+        }
+      }
+
+      function stub(roleMappings) {
+        sandbox.stub(cache, 'getSecretOrPublicKey').returns('test')
+        sandbox.stub(configIndex.config, 'get').returns({
+          algorithms: 'HS256',
+          audience: 'testAudience',
+          issuer: 'testIssuer',
+          roleMappings
+        })
+        sandbox.stub(logger, 'info')
+        sandbox
+          .stub(client.ClientModel, 'findOne')
+          .resolves({name: 'Test', clientID: 'test'})
+      }
+
+      it('should map the first realm role that has a mapping', async () => {
+        stub('hip=ehr,hiu=patient')
+        const ctx = ctxWithRoles(['offline_access', 'hiu', 'hip'])
+        await jwtAuthentication.koaMiddleware(ctx, sandbox.spy())
+        should(ctx.jwtRole).eql('patient')
+      })
+
+      it('should leave jwtRole undefined when no realm role is mapped', async () => {
+        stub('hip=ehr')
+        const ctx = ctxWithRoles(['other'])
+        await jwtAuthentication.koaMiddleware(ctx, sandbox.spy())
+        should(ctx.jwtRole).be.undefined()
+        should(ctx.authenticated).be.ok()
+      })
+
+      it('should leave jwtRole undefined when roleMappings is not configured', async () => {
+        stub('')
+        const ctx = ctxWithRoles(['hip'])
+        await jwtAuthentication.koaMiddleware(ctx, sandbox.spy())
+        should(ctx.jwtRole).be.undefined()
+      })
+    })
   })
 })

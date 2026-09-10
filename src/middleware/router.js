@@ -223,6 +223,12 @@ function constructOptionsObject(ctx, route, keystore, path) {
     options.auth = `${route.username}:${route.password}`
   }
 
+  if (route.forwardRoleHeader) {
+    // the mapped realm role is authoritative; never let the client pick its own
+    delete options.headers['x-role']
+    options.headers['x-role'] = ctx.jwtRole
+  }
+
   if (options.headers && options.headers.host) {
     delete options.headers.host
   }

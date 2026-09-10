@@ -53,6 +53,19 @@ export async function authorise(ctx, done) {
   if (
     channel != null &&
     authoriseIP(channel, ctx) &&
+    (channel.authType === 'public' || authoriseClient(channel, ctx)) &&
+    channel.routes.some(route => route.forwardRoleHeader) &&
+    !ctx.jwtRole
+  ) {
+    // channel wants X-Role upstream but the token carries no mapped realm role
+    ctx.response.status = 403
+    ctx.response.body = 'Token has no realm role mapped by roleMappings'
+    logger.info(
+      `The request, '${ctx.request.path}', has no realm role mapped by authentication.jwt.roleMappings for ${channel.name}`
+    )
+  } else if (
+    channel != null &&
+    authoriseIP(channel, ctx) &&
     (channel.authType === 'public' || authoriseClient(channel, ctx))
   ) {
     // authorisation succeeded

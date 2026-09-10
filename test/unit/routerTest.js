@@ -511,8 +511,16 @@ describe('HTTP Router', () => {
 
       it('should be able to multicast to multiple endpoints and set the responses for non-primary routes in ctx.routes', async () => {
         servers = await Promise.all([
-          testUtils.createMockHttpServer('Non Primary 1', NON_PRIMARY1_PORT, 200),
-          testUtils.createMockHttpServer('Non Primary 2', NON_PRIMARY2_PORT, 400),
+          testUtils.createMockHttpServer(
+            'Non Primary 1',
+            NON_PRIMARY1_PORT,
+            200
+          ),
+          testUtils.createMockHttpServer(
+            'Non Primary 2',
+            NON_PRIMARY2_PORT,
+            400
+          ),
           testUtils.createMockHttpServer('Primary', PRIMARY_PORT, 201)
         ])
 
@@ -523,21 +531,27 @@ describe('HTTP Router', () => {
         await new Promise(resolve => setTimeout(resolve, 100))
 
         ctx.routes.length.should.be.exactly(3)
-        const nonPrimary1 = ctx.routes.find(route => route.name === 'non_primary_1')
+        const nonPrimary1 = ctx.routes.find(
+          route => route.name === 'non_primary_1'
+        )
         nonPrimary1.response.status.should.be.exactly(200)
         nonPrimary1.response.body.toString().should.be.eql('Non Primary 1')
         nonPrimary1.response.headers.should.be.ok
         nonPrimary1.request.path.should.be.exactly('/test/multicasting')
         nonPrimary1.request.timestamp.should.be.exactly(requestTimestamp)
 
-        const nonPrimary2 = ctx.routes.find(route => route.name === 'non_primary_2')
+        const nonPrimary2 = ctx.routes.find(
+          route => route.name === 'non_primary_2'
+        )
         nonPrimary2.response.status.should.be.exactly(400)
         nonPrimary2.response.body.toString().should.be.eql('Non Primary 2')
         nonPrimary2.response.headers.should.be.ok
         nonPrimary2.request.path.should.be.exactly('/test/multicasting')
         nonPrimary2.request.timestamp.should.be.exactly(requestTimestamp)
 
-        const nonPrimaryKafka = ctx.routes.find(route => route.name === 'non_primary_kafka')
+        const nonPrimaryKafka = ctx.routes.find(
+          route => route.name === 'non_primary_kafka'
+        )
         nonPrimaryKafka.response.status.should.be.exactly(200)
         nonPrimaryKafka.response.body.should.be.ok
         nonPrimaryKafka.request.timestamp.should.be.exactly(requestTimestamp)
@@ -842,6 +856,36 @@ describe('HTTP Router', () => {
       const req = call.args[0]
       req.headers.should.have.property('authorization')
       req.headers.authorization.should.eql('Basic bWU6bWU=')
+    })
+
+    it('should send the mapped role as x-role and drop the client-supplied one when forwardRoleHeader is set', async () => {
+      const requestSpy = sinon.spy(() => {})
+      server = await testUtils.createMockHttpServer(requestSpy)
+
+      const channel = testUtils.clone(DEFAULT_CHANNEL)
+      channel.routes[0].forwardRoleHeader = true
+
+      const ctx = createContext(channel)
+      ctx.jwtRole = 'ehr'
+      ctx.request.header = {'x-role': 'admin'}
+      await promisify(router.route)(ctx)
+
+      requestSpy.callCount.should.be.eql(1)
+      const req = requestSpy.getCall(0).args[0]
+      req.headers['x-role'].should.eql('ehr')
+    })
+
+    it('should leave x-role untouched when forwardRoleHeader is not set', async () => {
+      const requestSpy = sinon.spy(() => {})
+      server = await testUtils.createMockHttpServer(requestSpy)
+
+      const ctx = createContext(DEFAULT_CHANNEL)
+      ctx.jwtRole = 'ehr'
+      ctx.request.header = {'x-role': 'admin'}
+      await promisify(router.route)(ctx)
+
+      const req = requestSpy.getCall(0).args[0]
+      req.headers['x-role'].should.eql('admin')
     })
 
     it('should have valid authorization header if username and password is set in options', async () => {

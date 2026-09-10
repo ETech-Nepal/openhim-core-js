@@ -45,6 +45,10 @@ const RouteDef = {
     type: Boolean,
     default: false
   },
+  forwardRoleHeader: {
+    type: Boolean,
+    default: false
+  },
   waitPrimaryResponse: Boolean,
   statusCodesCheck: String,
   kafkaClientId: String,
