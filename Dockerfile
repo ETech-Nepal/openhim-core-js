@@ -6,7 +6,7 @@ COPY . .
 
 RUN npm install && npm run build
 
-FROM node:14.21.3-alpine
+FROM node:20-alpine
 
 ENV NODE_ENV=production
 
@@ -20,6 +20,6 @@ COPY --from=build ./build/lib ./lib
 
 COPY . .
 
-RUN npm install --production
+RUN npm install --production --ignore-scripts
 
 CMD ["node", "lib/server.js"]
