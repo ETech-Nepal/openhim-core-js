@@ -3,6 +3,7 @@
 /* eslint-env mocha */
 /* eslint no-unused-expressions:0 */
 
+import moment from 'moment'
 import should from 'should'
 import {ObjectId} from 'mongodb'
 import {register} from 'prom-client'
@@ -11,6 +12,11 @@ import * as metrics from '../../src/metrics'
 import {MetricModel} from '../../src/model'
 import {ChannelModelAPI} from '../../src/model/channels'
 import {ClientModelAPI} from '../../src/model/clients'
+
+// Buckets use server-local time, so derive expected starts the same way (works in any TZ, e.g. +0545)
+const REQUEST_TIME = new Date('2017-12-07T09:17:58.333Z')
+const HOUR_START = moment(REQUEST_TIME).startOf('hour').toDate()
+const DAY_START = moment(REQUEST_TIME).startOf('day').toDate()
 
 describe('recordTransactionMetrics', () => {
   beforeEach(async () => {
@@ -59,7 +65,7 @@ describe('recordTransactionMetrics', () => {
     should.equal(hourMetrics.length, 1)
     should.deepEqual(
       hourMetrics[0].startTime,
-      new Date('2017-12-07T09:00:00.000Z')
+      HOUR_START
     )
     should.ok(channelID.equals(hourMetrics[0].channelID))
     should.equal(hourMetrics[0].requests, 1)
@@ -76,8 +82,8 @@ describe('recordTransactionMetrics', () => {
     should.equal(dayMetrics.length, 1)
     should.deepEqual(
       dayMetrics[0].startTime,
-      new Date('2017-12-06T22:00:00.000Z')
-    ) // N.B. This will fail in non SAST environments
+      DAY_START
+    )
     should.ok(channelID.equals(dayMetrics[0].channelID))
     should.equal(dayMetrics[0].requests, 1)
     should.equal(dayMetrics[0].responseTime, 3167)
@@ -135,7 +141,7 @@ describe('recordTransactionMetrics', () => {
     const channelID = new ObjectId()
 
     await MetricModel.create({
-      startTime: new Date('2017-12-07T09:00:00.000Z'),
+      startTime: HOUR_START,
       type: 'h',
       channelID,
       requests: 1,
@@ -162,7 +168,7 @@ describe('recordTransactionMetrics', () => {
     should.equal(minuteMetrics.length, 1)
     should.deepEqual(
       minuteMetrics[0].startTime,
-      new Date('2017-12-07T09:00:00.000Z')
+      HOUR_START
     )
     should.ok(channelID.equals(minuteMetrics[0].channelID))
     should.equal(minuteMetrics[0].requests, 2)
@@ -176,7 +182,7 @@ describe('recordTransactionMetrics', () => {
     const channelID = new ObjectId()
 
     await MetricModel.create({
-      startTime: new Date('2017-12-07T09:00:00.000Z'),
+      startTime: HOUR_START,
       type: 'h',
       channelID,
       requests: 1,
@@ -203,7 +209,7 @@ describe('recordTransactionMetrics', () => {
     should.equal(minuteMetrics.length, 1)
     should.deepEqual(
       minuteMetrics[0].startTime,
-      new Date('2017-12-07T09:00:00.000Z')
+      HOUR_START
     )
     should.ok(channelID.equals(minuteMetrics[0].channelID))
     should.equal(minuteMetrics[0].failed, 0)
