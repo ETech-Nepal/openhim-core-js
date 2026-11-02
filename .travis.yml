@@ -1,8 +1,8 @@
 language: node_js
 dist: jammy
 node_js:
-  - "lts/fermium"
-  - "lts/gallium"
+  - "24"
+  - "26"
   - "node"
 matrix:
   fast_finish: true
